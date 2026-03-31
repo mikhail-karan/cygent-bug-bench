@@ -28,3 +28,12 @@ node_modules/
 Thumbs.db
 
 .output/
+
+# TypeScript build output
+src-ts/dist/
+
+# Rust build output
+src-rust/target/
+
+# Go binaries
+src-go/src-go
