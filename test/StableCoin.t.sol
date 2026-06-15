@@ -261,6 +261,39 @@ contract StableCoinTest is Test {
         assertEq(streamer.getStreamRate(streamId), expectedRate);
     }
 
+    function testAddToStreamAcceleratedVesting() public {
+        uint256 firstDeposit = 2_000_000 * 10 ** stablecoin.decimals();
+        uint256 topUpDeposit = 6_000_000 * 10 ** stablecoin.decimals();
+
+        vm.startPrank(user1);
+        stablecoin.approve(address(streamer), firstDeposit + topUpDeposit);
+        uint256 streamId = streamer.createStream(user2, firstDeposit, STREAM_DURATION);
+        vm.stopPrank();
+
+        skip(27 days);
+
+        uint256 availableBeforeTopUp = streamer.getAvailableTokens(streamId);
+
+        vm.prank(user1);
+        streamer.addToStream(streamId, topUpDeposit);
+
+        uint256 availableAfterTopUp = streamer.getAvailableTokens(streamId);
+        uint256 newlyAvailableFromTopUp = availableAfterTopUp - availableBeforeTopUp;
+
+        uint256 expectedTopUpShareFromElapsed = (topUpDeposit * 27 days) / STREAM_DURATION;
+        uint256 expectedTopUpShareFromRemaining = (topUpDeposit * 3 days) / STREAM_DURATION;
+
+        assertEq(newlyAvailableFromTopUp, expectedTopUpShareFromElapsed);
+        assertGt(newlyAvailableFromTopUp, expectedTopUpShareFromRemaining);
+
+        uint256 user2BalanceBefore = stablecoin.balanceOf(user2);
+        vm.prank(user2);
+        streamer.withdrawFromStream(streamId);
+        uint256 withdrawn = stablecoin.balanceOf(user2) - user2BalanceBefore;
+
+        assertEq(withdrawn, availableAfterTopUp);
+    }
+
     function testLowDecimalStreamRateIssue() public {
         // Test the bug where low decimals cause zero stream rates
         uint256 smallAmount = 25 * 10 ** stablecoin.decimals(); // 250 with 1 decimal

@@ -150,5 +150,13 @@
     "severity": "medium",
     "language": "rust",
     "file": "src-rust/service.rs"
+  },
+  {
+    "id": 25,
+    "title": "TokenStreamer.addToStream allows accelerated vesting of newly-added tokens",
+    "body": "**Description:**\nThe `TokenStreamer::addToStream` function in `src/StableCoin.sol` increases `stream.totalDeposited` when topping up an existing stream but does not extend `endTime` or otherwise rebase vesting progression for the new deposit. Vesting is computed in `getAvailableTokens` as `(stream.totalDeposited * elapsed) / duration`, where `elapsed` is measured from the original `startTime` and `duration` remains unchanged. This means newly-added tokens inherit the already elapsed fraction of the original schedule. If a stream is near completion, a top-up causes most of the new tokens to become immediately claimable despite being freshly deposited.\n\n**Impact:**\nRecipients can withdraw a disproportionate share of newly-added tokens immediately after top-up, breaking expected linear vesting and accelerating unlock of funds intended to vest over time.\n\n**Attack Scenario:**\n1. A sender creates a stream for a recipient over 30 days.\n2. The recipient waits until late in the schedule (for example, around day 27).\n3. The sender adds a large new deposit via `addToStream`.\n4. Because vesting is still based on the original elapsed fraction, the recipient can immediately withdraw most of the new deposit instead of only the time-proportional amount since top-up.\n\n**Recommended Mitigation:**\nRebase vesting when adding funds to an existing stream. For example, either extend `endTime` proportionally to preserve the intended unlock rate, or track each deposit as a separate vesting tranche with its own start/end schedule so newly-added funds do not inherit prior elapsed time.",
+    "severity": "high",
+    "language": "solidity",
+    "file": "src/StableCoin.sol"
   }
 ]
